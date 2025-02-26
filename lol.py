@@ -3,7 +3,7 @@ from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
 import torch
 
 time_1 = time.time()
-hf_token = "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"  # Replace with your token
+hf_token = "lol"  # Replace with your token
 
 # Load the model in 4-bit
 # Or "microsoft/Phi-3-mini-4k-instruct"
