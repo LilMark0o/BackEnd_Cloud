@@ -30,12 +30,7 @@ def ask_file(file_path, question, max_new_tokens=100):
         text = f.read()
 
     # Use a more structured prompt
-    prompt = (
-        f"Context:\n{text}\n\n"
-        f"Based on the context above, answer the following question concisely:\n"
-        f"Question: {question}\n"
-        f"Answer:"
-    )
+    prompt = f"Answer concisely and only respond to the given question. \n\nContext: {text}\n\nQuestion: What is the main topic?"
 
     response = qa_pipeline(
         prompt, max_new_tokens=max_new_tokens, do_sample=True)

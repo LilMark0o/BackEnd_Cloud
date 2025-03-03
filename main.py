@@ -6,6 +6,27 @@ from jose import JWTError, jwt
 from datetime import datetime, timedelta
 from sqlalchemy import create_engine, Column, String, LargeBinary
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
+import time
+from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
+import torch
+
+hf_token = "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"  # Replace with your token
+
+# Load the model in 4-bit
+# Or "microsoft/Phi-3-mini-4k-instruct"
+model_name = "microsoft/Phi-3-mini-4k-instruct"
+
+model = AutoModelForCausalLM.from_pretrained(
+    model_name,
+    device_map="auto",
+    torch_dtype=torch.float16,
+    token=hf_token  # Pass token to access the model
+)
+
+tokenizer = AutoTokenizer.from_pretrained(model_name, token=hf_token)
+
+# Create a pipeline for text generation
+qa_pipeline = pipeline("text-generation", model=model, tokenizer=tokenizer)
 
 # Configuración
 SECRET_KEY = "supersecretkey"
@@ -155,3 +176,32 @@ def download_file(file_id: str, current_user: User = Depends(get_current_user), 
     if not file:
         raise HTTPException(status_code=404, detail="File not found")
     return {"filename": file.filename, "content": file.content}
+
+
+class AskRequest(BaseModel):
+    question: str
+
+
+@app.post("/ask/{file_id}")
+def ask_file(file_id: str, request: AskRequest, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    file = db.query(FileData).filter(FileData.id == file_id,
+                                     FileData.owner == current_user.username).first()
+    if not file:
+        raise HTTPException(
+            status_code=404, detail="File not found or unauthorized access")
+
+    text = file.content.decode("utf-8", errors="ignore")
+
+    # Crear el prompt para el modelo
+    prompt = f"Answer concisely and only respond to the given question. \n\nContext: {text}\n\nQuestion: {request.question}\n"
+
+    time_1 = time.time()
+
+    response = qa_pipeline(prompt, max_new_tokens=100, do_sample=True)
+    print(f"Time taken: {time.time() - time_1:.2f} seconds")
+    answer_full = response[0]["generated_text"].strip()
+    # Divide y toma la parte después de 'Answer:'
+    small_one = answer_full.split(
+        f"\n\nQuestion: {request.question}\n", 1)[-1].strip()
+
+    return {"answer": answer_full, 'small_answer': small_one}
