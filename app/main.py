@@ -9,11 +9,12 @@ from sqlalchemy.orm import declarative_base, sessionmaker, Session
 import time
 from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
 import torch
+import os
+from dotenv import load_dotenv
 
-hf_token = "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"  # Replace with your token
+load_dotenv()
+hf_token = os.getenv("HF_TOKEN")
 
-# Load the model in 4-bit
-# Or "microsoft/Phi-3-mini-4k-instruct"
 model_name = "microsoft/Phi-3-mini-4k-instruct"
 
 model = AutoModelForCausalLM.from_pretrained(
@@ -29,16 +30,16 @@ tokenizer = AutoTokenizer.from_pretrained(model_name, token=hf_token)
 qa_pipeline = pipeline("text-generation", model=model, tokenizer=tokenizer)
 
 # Configuración
-SECRET_KEY = "supersecretkey"
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+SECRET_KEY = os.getenv("SECRET_KEY")
+ALGORITHM = os.getenv("ALGORITHM")
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 30))
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/login")
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # Base de datos
-DATABASE_URL = "sqlite:///./users.db"
-engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+DATABASE_URL = os.getenv("DATABASE_URL")
+engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
